@@ -7,31 +7,41 @@ def readPFM(file):
     file = open(file, 'rb')
 
     color = None
+    #color = False
     width = None
     height = None
     scale = None
     endian = None
 
-    header = file.readline().rstrip()
+    header = file.readline().rstrip().decode("utf-8")
+    #print('liyang=',header)
+    #print(type(header))
+    #header = header.decode("utf-8") 
+    #print('liyang=',header)
+    #print(type(header))
+    
     if header == 'PF':
         color = True
     elif header == 'Pf':
         color = False
     else:
         raise Exception('Not a PFM file.')
+    
 
-    dim_match = re.match(r'^(\d+)\s(\d+)\s$', file.readline())
+    dim_match = re.match(r'^(\d+)\s(\d+)\s$', file.readline().decode("utf-8"))
     if dim_match:
         width, height = map(int, dim_match.groups())
     else:
         raise Exception('Malformed PFM header.')
 
-    scale = float(file.readline().rstrip())
+    scale = float(file.readline().rstrip().decode("utf-8"))
+    #print('scale=',scale)
     if scale < 0: # little-endian
         endian = '<'
         scale = -scale
     else:
         endian = '>' # big-endian
+    #print('scale=',scale)
 
     data = np.fromfile(file, endian + 'f')
     shape = (height, width, 3) if color else (height, width)

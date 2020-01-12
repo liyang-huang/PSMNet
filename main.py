@@ -17,6 +17,7 @@ from dataloader import listflowfile as lt
 from dataloader import SecenFlowLoader as DA
 from models import *
 
+
 parser = argparse.ArgumentParser(description='PSMNet')
 parser.add_argument('--maxdisp', type=int ,default=192,
                     help='maxium disparity')
@@ -44,16 +45,19 @@ torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
+
+
+
 all_left_img, all_right_img, all_left_disp, test_left_img, test_right_img, test_left_disp = lt.dataloader(args.datapath)
 
 TrainImgLoader = torch.utils.data.DataLoader(
          DA.myImageFloder(all_left_img,all_right_img,all_left_disp, True), 
-         batch_size= 12, shuffle= True, num_workers= 8, drop_last=False)
-
+         batch_size= 2, shuffle= True, num_workers= 0, drop_last=False)
+'''
 TestImgLoader = torch.utils.data.DataLoader(
          DA.myImageFloder(test_left_img,test_right_img,test_left_disp, False), 
          batch_size= 8, shuffle= False, num_workers= 4, drop_last=False)
-
+'''
 
 if args.model == 'stackhourglass':
     model = stackhourglass(args.maxdisp)
@@ -63,7 +67,8 @@ else:
     print('no model')
 
 if args.cuda:
-    model = nn.DataParallel(model)
+    #model = nn.DataParallel(model)
+    model = nn.DataParallel(model, device_ids=[0])
     model.cuda()
 
 if args.loadmodel is not None:
@@ -84,8 +89,8 @@ def train(imgL,imgR, disp_L):
             imgL, imgR, disp_true = imgL.cuda(), imgR.cuda(), disp_L.cuda()
 
        #---------
-        mask = disp_true < args.maxdisp
-        mask.detach_()
+        #mask = disp_true < args.maxdisp
+        #mask.detach_()
         #----
         optimizer.zero_grad()
         
@@ -96,14 +101,27 @@ def train(imgL,imgR, disp_L):
             output3 = torch.squeeze(output3,1)
             loss = 0.5*F.smooth_l1_loss(output1[mask], disp_true[mask], size_average=True) + 0.7*F.smooth_l1_loss(output2[mask], disp_true[mask], size_average=True) + F.smooth_l1_loss(output3[mask], disp_true[mask], size_average=True) 
         elif args.model == 'basic':
+            #print('liyang_imgL=',imgL)
+            #print(imgL.shape)
+            #print(imgL.dtype)
             output = model(imgL,imgR)
+            #print('liyang_out=',output)
+            #print(output.shape)
+            #print(output.dtype)
             output = torch.squeeze(output,1)
-            loss = F.smooth_l1_loss(output[mask], disp_true[mask], size_average=True)
+            #loss = F.smooth_l1_loss(output[mask], disp_true[mask], size_average=True)
+            #print('liyang_gt=',disp_true)
+            #print(disp_true.shape)
+            loss = F.mse_loss(output,disp_true)
+            #print('loss=',loss)
 
         loss.backward()
         optimizer.step()
+        #print('loss=',loss.data)
+        #print(np.shape(loss.data))
 
-        return loss.data[0]
+        #return loss.data[0]
+        return loss.data
 
 def test(imgL,imgR,disp_true):
         model.eval()
@@ -148,7 +166,7 @@ def main():
 	     start_time = time.time()
 
 	     loss = train(imgL_crop,imgR_crop, disp_crop_L)
-	     print('Iter %d training loss = %.3f , time = %.2f' %(batch_idx, loss, time.time() - start_time))
+	     print('epoch %d Iter %d training loss = %.3f , time = %.2f' %(epoch, batch_idx, loss, time.time() - start_time))
 	     total_train_loss += loss
 	   print('epoch %d total training loss = %.3f' %(epoch, total_train_loss/len(TrainImgLoader)))
 
@@ -161,7 +179,7 @@ def main():
 		}, savefilename)
 
 	print('full training time = %.2f HR' %((time.time() - start_full_time)/3600))
-
+	'''
 	#------------- TEST ------------------------------------------------------------
 	total_test_loss = 0
 	for batch_idx, (imgL, imgR, disp_L) in enumerate(TestImgLoader):
@@ -176,6 +194,7 @@ def main():
 	torch.save({
 		    'test_loss': total_test_loss/len(TestImgLoader),
 		}, savefilename)
+	'''
 
 
 if __name__ == '__main__':

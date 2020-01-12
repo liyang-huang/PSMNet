@@ -5,10 +5,13 @@ import torch
 import torchvision.transforms as transforms
 import random
 from PIL import Image, ImageOps
-import preprocess 
-import listflowfile as lt
-import readpfm as rp
+from dataloader import preprocess 
+from dataloader import listflowfile as lt
+from dataloader import readpfm as rp
 import numpy as np
+import skimage
+import skimage.io
+import skimage.transform
 
 IMG_EXTENSIONS = [
     '.jpg', '.JPG', '.jpeg', '.JPEG',
@@ -20,6 +23,7 @@ def is_image_file(filename):
 
 def default_loader(path):
     return Image.open(path).convert('RGB')
+    #return skimage.io.imread(path).astype('float32')
 
 def disparity_loader(path):
     return rp.readPFM(path)
@@ -49,20 +53,27 @@ class myImageFloder(data.Dataset):
 
 
         if self.training:  
-           w, h = left_img.size
-           th, tw = 256, 512
+           #w, h = left_img.size
+           #th, tw = 256, 512
+           #print('liyang',w)
+           #print('liyang',h)
  
-           x1 = random.randint(0, w - tw)
-           y1 = random.randint(0, h - th)
+           #x1 = random.randint(0, w - tw)
+           #y1 = random.randint(0, h - th)
 
-           left_img = left_img.crop((x1, y1, x1 + tw, y1 + th))
-           right_img = right_img.crop((x1, y1, x1 + tw, y1 + th))
+           #left_img = left_img.crop((x1, y1, x1 + tw, y1 + th))
+           #right_img = right_img.crop((x1, y1, x1 + tw, y1 + th))
 
-           dataL = dataL[y1:y1 + th, x1:x1 + tw]
+           #dataL = dataL[y1:y1 + th, x1:x1 + tw]
 
            processed = preprocess.get_transform(augment=False)  
            left_img   = processed(left_img)
            right_img  = processed(right_img)
+           #w, h = left_img.size
+           #print('liyang',w)
+           #print('liyang',h)
+           #print('liyang',left_img.shape)
+           #print('liyang_imgL=',left_img)
 
            return left_img, right_img, dataL
         else:
